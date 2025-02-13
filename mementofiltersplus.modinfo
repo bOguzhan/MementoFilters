@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Mod id="MementoFilters+" version="1"
+	xmlns="ModInfo">
+	<Properties>
+		<Name>MementoFilters+</Name>
+		<Description>Filtering options at the memento menu</Description>
+		<Authors>bOughzna</Authors>
+		<Package>Mod</Package>
+		<AffectsSavedGames>0</AffectsSavedGames>
+	</Properties>
+	<Dependencies>
+		<Mod id="base-standard" title="LOC_MODULE_BASE_STANDARD_NAME"/>
+	</Dependencies>
+	<ActionCriteria>
+		<Criteria id="always">
+			<AlwaysMet></AlwaysMet>
+		</Criteria>
+	</ActionCriteria>
+	<ActionGroups>
+		<ActionGroup id="game-memento-filters-plus-always" scope="core" criteria="always">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<Actions>
+				<UpdateText>
+					<Item>text/mementofiltersplus.sql</Item>
+				</UpdateText>
+				<ImportFiles>
+					<Item>ui/shell/create-panels/memento-editor.css</Item>
+					<Item>ui/shell/create-panels/memento-editor.js</Item>
+					<Item>ui/shell/create-panels/memento-editor.scss</Item>
+					<Item>ui/shell/create-panels/memento-editor.ts</Item>
+					<Item>ui/shell/create-panels/memento-slot.css</Item>
+					<Item>ui/shell/create-panels/memento-slot.js</Item>
+					<Item>ui/shell/create-panels/memento-slot.scss</Item>
+					<Item>ui/shell/create-panels/memento-slot.ts</Item>
+				</ImportFiles>
+			</Actions>
+		</ActionGroup>
+	</ActionGroups>
+</Mod>
