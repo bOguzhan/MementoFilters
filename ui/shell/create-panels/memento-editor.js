@@ -82,7 +82,7 @@ export class MementoEditor extends Panel {
         this.headerText = document.createElement("fxs-header");
         this.mementoSlotEles = [];
         this.mementoEles = [];
-        this.confirmButton = document.createElement("fxs-button");
+        this.confirmButton = document.createElement("fxs-button" );
         this.cancelButton = document.createElement("fxs-button");
         this.engineInputListener = this.onEngineInput.bind(this);
         this.navigateInputListener = this.onNavigateInput.bind(this);
@@ -201,7 +201,7 @@ export class MementoEditor extends Panel {
     }
     sortMementos() {
         // Sort by display type (Unlocked > Locked > Hidden)
-        this.mementosData.sort((a, b) => a.displayType - b.displayType);
+        this.mementosData.sort((a, b) => b.displayType - a.displayType);
     }
     applySelections() {
         for (const slot of this.mementoSlotEles) {
