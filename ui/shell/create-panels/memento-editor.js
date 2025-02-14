@@ -11,6 +11,7 @@ import Panel from "/core/ui/panel-support.js";
 import { CreateGameModel } from "/core/ui/shell/create-panels/create-game-model.js";
 import { getMementoData } from "/core/ui/shell/create-panels/leader-select-model.js";
 import Databind from "/core/ui/utilities/utilities-core-databinding.js";
+import { MementoFavorites } from './memento-favorites.js';
 
 export class Memento extends FxsActivatable {
     set mementoData(value) {
@@ -32,7 +33,10 @@ export class Memento extends FxsActivatable {
         this.iconEle = document.createElement("div");
         this.focusRing = document.createElement("div");
         this.selectionRing = document.createElement("div");
+        this.favoriteIcon = document.createElement("div"); // Add favorite star icon
         this._selected = false;
+        this._isFavorite = false;
+
         this.Root.classList.add("w-19", "h-19", "m-1\\.25", "relative", "group");
         this.iconEle.classList.add("absolute", "bg-cover", "inset-1");
         this.Root.appendChild(this.iconEle);
@@ -42,13 +46,42 @@ export class Memento extends FxsActivatable {
         this.Root.appendChild(this.focusRing);
         this.Root.setAttribute("data-audio-group-ref", "memento-item");
         this.Root.setAttribute("data-audio-activate-ref", "data-audio-memento-selected");
+
+        // Add favorite star icon (hidden by default)
+        this.favoriteIcon.classList.add(
+            "absolute", 
+            "top-0", 
+            "right-0",
+            "w-4",
+            "h-4",
+            "hidden",
+            "z-10"
+        );
+        this.favoriteIcon.style.backgroundImage = 'url("fs://game/ui/icons/common/icon_favorite.png")';
+        this.Root.appendChild(this.favoriteIcon);
+
+        // Add right-click handler for favorites
+        this.Root.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+            this.toggleFavorite();
+        });
     }
-    setHidden(isHidden) {
-        this.Root.classList.toggle('hidden', isHidden);
+
+    set isFavorite(value) {
+        this._isFavorite = value;
+        this.favoriteIcon.classList.toggle('hidden', !value);
+        // Save to favorites file
+        MementoFavorites.saveFavorite(this.mementoData?.mementoTypeId, value);
     }
-    setAvailable(isAvailable) {
-        this.Root.classList.toggle('opacity-50', !isAvailable);
+
+    get isFavorite() {
+        return this._isFavorite;
     }
+
+    toggleFavorite() {
+        this.isFavorite = !this.isFavorite;
+    }
+
     updateData() {
         if (this._mementoData) {
             if (this._mementoData.mementoIcon) {
@@ -69,6 +102,9 @@ export class Memento extends FxsActivatable {
             }
             // Display hidden
             else { }
+
+            // Check if this memento is favorited
+            this.isFavorite = MementoFavorites.isFavorite(this._mementoData.mementoTypeId);
         }
     }
 }
@@ -378,7 +414,16 @@ export class MementoEditor extends Panel {
             // Add unlock filter check
             const matchesUnlockFilter = !this.showOnlyUnlocked || !isLocked;
 
-            mementoComponent?.setHidden(isHidden || !matchesSearch || !matchesUnlockFilter);
+            // Add favorites filter check
+            const matchesFavorites = !this.showOnlyFavorites || 
+                MementoFavorites.isFavorite(memData?.mementoTypeId);
+
+            mementoComponent?.setHidden(
+                isHidden || 
+                !matchesSearch || 
+                !matchesUnlockFilter ||
+                !matchesFavorites
+            );
             mementoComponent?.setAvailable(
                 memData?.displayType == DisplayType.DISPLAY_UNLOCKED && 
                 availableMementos.has(memData?.mementoTypeId ?? "")
