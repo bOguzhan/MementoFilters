@@ -102,17 +102,51 @@ export class MementoEditor extends Panel {
         this.outerSlot = document.createElement("fxs-vslot");
         this.outerSlot.classList.add("items-center", "h-full");
         outerFrame.appendChild(this.outerSlot);
+        
+        // First create and append header
         this.headerText.classList.add("uppercase", "font-title-xl", "leading-loose", "-mt-5", "mb-5");
         this.headerText.setAttribute("filigree-style", "h2");
         this.outerSlot.appendChild(this.headerText);
-        
-        // Create search and filter container
-        const searchAndFilterContainer = document.createElement('div');
-        searchAndFilterContainer.classList.add('flex', 'flex-col', 'w-full', 'mb-4');
 
-        // Create search input
+        // Create and append memento slots section with navigation
+        const mementoSlotsContainer = document.createElement("fxs-hslot");
+        mementoSlotsContainer.classList.add("flex", "flex-row", "items-start");
+        this.outerSlot.appendChild(mementoSlotsContainer);
+
+        const leftNav = document.createElement("fxs-nav-help");
+        leftNav.classList.add("self-center");
+        leftNav.setAttribute("action-key", "inline-cycle-prev");
+        leftNav.textContent = "<";
+        mementoSlotsContainer.appendChild(leftNav);
+
+        // Add memento slots
+        for (const mementoSlotData of getMementoData()) {
+            const mementoSlot = document.createElement("memento-slot");
+            mementoSlot.componentCreatedEvent.on(component => component.slotData = mementoSlotData);
+            mementoSlot.addEventListener("action-activate", this.handleSlotSelected.bind(this, mementoSlot));
+            mementoSlot.addEventListener("focus", this.handleSlotSelected.bind(this, mementoSlot));
+            this.mementoSlotEles.push(mementoSlot);
+            mementoSlotsContainer.appendChild(mementoSlot);
+        }
+
+        const rightNav = document.createElement("fxs-nav-help");
+        rightNav.setAttribute("action-key", "inline-cycle-next");
+        rightNav.classList.add("self-center");
+        rightNav.textContent = ">";
+        mementoSlotsContainer.appendChild(rightNav);
+
+        // Add first divider
+        const topDivider = document.createElement("div");
+        topDivider.classList.add("memento-shell-line-divider", "h-2", "my-4");
+        this.outerSlot.appendChild(topDivider);
+
+        // Create and append search and filter container
+        const searchAndFilterContainer = document.createElement('div');
+        searchAndFilterContainer.classList.add('flex', 'flex-col', 'items-center', 'w-full', 'mb-2', 'gap-6'); // Changed mb-4 to mb-2 and gap-4 to gap-6
+
+        // Add search input with reduced width and centered
         const searchInput = document.createElement('fxs-textbox');
-        searchInput.classList.add('w-174', 'font-body-base', 'mb-2');  // Added margin bottom
+        searchInput.classList.add('w-80', 'font-body-base'); // Kept w-60 for short width
         searchInput.setAttribute('tabindex', '-1');
         searchInput.setAttribute('placeholder', Locale.compose('Search') || 'Search mementos...');
         searchInput.setAttribute('data-audio-group-ref', 'memento-search');
@@ -123,14 +157,13 @@ export class MementoEditor extends Panel {
         searchAndFilterContainer.appendChild(searchInput);
         this.searchInput = searchInput;
 
-        // Create unlock filter checkbox container
+        // Add checkbox container, centered
         const filterContainer = document.createElement('div');
-        filterContainer.classList.add('flex', 'items-center', 'ml-2'); // Added margin-left
+        filterContainer.classList.add('flex', 'items-center', 'mt-3','gap-1'); 
 
-        // Create unlock filter checkbox with label
+        // Create checkbox and label
         const unlockFilter = document.createElement('fxs-checkbox');
         unlockFilter.classList.add('font-body-base');
-        unlockFilter.setAttribute('label', 'Show only unlocked');  // Changed from 'caption' to 'label'
         unlockFilter.setAttribute('data-audio-group-ref', 'memento-filter');
         unlockFilter.setAttribute('tabindex', '-1');
         unlockFilter.addEventListener('component-value-changed', (event) => {
@@ -140,49 +173,28 @@ export class MementoEditor extends Panel {
 
         // Create label text element
         const filterLabel = document.createElement('span');
-        filterLabel.classList.add('font-body-base', 'ml-2', 'text-white');
-        filterLabel.textContent = 'Show only unlocked';
+        filterLabel.classList.add('font-body-base', 'text-white');
+        filterLabel.textContent = 'Show Unlocked Only';
 
-        // Add elements to container
+        // Add checkbox and label to container
         filterContainer.appendChild(unlockFilter);
         filterContainer.appendChild(filterLabel);
         searchAndFilterContainer.appendChild(filterContainer);
 
+        // Add search and filter container
         this.outerSlot.appendChild(searchAndFilterContainer);
 
-        // Create mementoSlotsContainer first
-        const mementoSlotsContainer = document.createElement("fxs-hslot");
-        mementoSlotsContainer.classList.add("flex", "flex-row", "items-start");
-        
-        // Insert container after header but before memento slots
-        this.outerSlot.insertBefore(searchAndFilterContainer, mementoSlotsContainer);
+        // Add second divider
+        const bottomDivider = document.createElement("div");
+        bottomDivider.classList.add("memento-shell-line-divider", "h-2", "my-4");
+        this.outerSlot.appendChild(bottomDivider);
 
-        this.outerSlot.appendChild(mementoSlotsContainer);
-        const leftNav = document.createElement("fxs-nav-help");
-        leftNav.classList.add("self-center");
-        leftNav.setAttribute("action-key", "inline-cycle-prev");
-        leftNav.textContent = "<"; // Use text instead of icon
-        mementoSlotsContainer.appendChild(leftNav);
-        for (const mementoSlotData of getMementoData()) {
-            const mementoSlot = document.createElement("memento-slot");
-            mementoSlot.componentCreatedEvent.on(component => component.slotData = mementoSlotData);
-            mementoSlot.addEventListener("action-activate", this.handleSlotSelected.bind(this, mementoSlot));
-            mementoSlot.addEventListener("focus", this.handleSlotSelected.bind(this, mementoSlot));
-            this.mementoSlotEles.push(mementoSlot);
-            mementoSlotsContainer.appendChild(mementoSlot);
-        }
-        const rightNav = document.createElement("fxs-nav-help");
-        rightNav.setAttribute("action-key", "inline-cycle-next");
-        rightNav.classList.add("self-center");
-        rightNav.textContent = ">"; // Use text instead of icon
-        mementoSlotsContainer.appendChild(rightNav);
-        const dividerFiligree = document.createElement("div");
-        dividerFiligree.classList.add("memento-shell-line-divider", "h-2", "my-4");
-        this.outerSlot.appendChild(dividerFiligree);
+        // Create and append memento list container
         const innerFrame = document.createElement("fxs-inner-frame");
         innerFrame.setAttribute("data-content-class", "items-center");
         innerFrame.classList.add("w-174", "flex-auto", "relative");
         this.outerSlot.appendChild(innerFrame);
+
         const middleDecor = document.createElement("div");
         middleDecor.classList.add("absolute", "-top-1\\.5", "img-popup-middle-decor");
         innerFrame.appendChild(middleDecor);
