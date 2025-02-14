@@ -2,9 +2,9 @@
 <Mod id="MementoFilters+" version="1"
 	xmlns="ModInfo">
 	<Properties>
-		<Name>MementoFilters+</Name>
-		<Description>Filtering options at the memento menu</Description>
-		<Authors>bOughzna</Authors>
+		<Name>Memento Filters</Name>
+		<Description>Memento Filters Mod</Description>
+		<Authors>bOguzhan</Authors>
 		<Package>Mod</Package>
 		<AffectsSavedGames>0</AffectsSavedGames>
 	</Properties>
@@ -17,24 +17,15 @@
 		</Criteria>
 	</ActionCriteria>
 	<ActionGroups>
-		<ActionGroup id="game-memento-filters-plus-always" scope="core" criteria="always">
+		<ActionGroup id="game-memento-filters-plus-always" scope="shell" criteria="always">
 			<Properties>
 				<LoadOrder>100</LoadOrder>
 			</Properties>
 			<Actions>
-				<UpdateText>
-					<Item>text/mementofiltersplus.sql</Item>
-				</UpdateText>
-				<ImportFiles>
-					<Item>ui/shell/create-panels/memento-editor.css</Item>
+				<UIScripts>
 					<Item>ui/shell/create-panels/memento-editor.js</Item>
-					<Item>ui/shell/create-panels/memento-editor.scss</Item>
-					<Item>ui/shell/create-panels/memento-editor.ts</Item>
-					<Item>ui/shell/create-panels/memento-slot.css</Item>
 					<Item>ui/shell/create-panels/memento-slot.js</Item>
-					<Item>ui/shell/create-panels/memento-slot.scss</Item>
-					<Item>ui/shell/create-panels/memento-slot.ts</Item>
-				</ImportFiles>
+				</UIScripts>
 			</Actions>
 		</ActionGroup>
 	</ActionGroups>

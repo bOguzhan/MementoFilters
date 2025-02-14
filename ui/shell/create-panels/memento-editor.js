@@ -11,6 +11,7 @@ import Panel from "/core/ui/panel-support.js";
 import { CreateGameModel } from "/core/ui/shell/create-panels/create-game-model.js";
 import { getMementoData } from "/core/ui/shell/create-panels/leader-select-model.js";
 import Databind from "/core/ui/utilities/utilities-core-databinding.js";
+
 export class Memento extends FxsActivatable {
     set mementoData(value) {
         this._mementoData = value;
@@ -79,10 +80,14 @@ Controls.define('memento-item', {
 export class MementoEditor extends Panel {
     constructor(root) {
         super(root);
+        // Add new property for unlock filter
+        this.showOnlyUnlocked = false;
+        this.searchQuery = '';
+        
         this.headerText = document.createElement("fxs-header");
         this.mementoSlotEles = [];
         this.mementoEles = [];
-        this.confirmButton = document.createElement("fxs-button" );
+        this.confirmButton = document.createElement("fxs-button");
         this.cancelButton = document.createElement("fxs-button");
         this.engineInputListener = this.onEngineInput.bind(this);
         this.navigateInputListener = this.onNavigateInput.bind(this);
@@ -100,12 +105,63 @@ export class MementoEditor extends Panel {
         this.headerText.classList.add("uppercase", "font-title-xl", "leading-loose", "-mt-5", "mb-5");
         this.headerText.setAttribute("filigree-style", "h2");
         this.outerSlot.appendChild(this.headerText);
+        
+        // Create search and filter container
+        const searchAndFilterContainer = document.createElement('div');
+        searchAndFilterContainer.classList.add('flex', 'flex-col', 'w-full', 'mb-4');
+
+        // Create search input
+        const searchInput = document.createElement('fxs-textbox');
+        searchInput.classList.add('w-174', 'font-body-base', 'mb-2');  // Added margin bottom
+        searchInput.setAttribute('tabindex', '-1');
+        searchInput.setAttribute('placeholder', Locale.compose('Search') || 'Search mementos...');
+        searchInput.setAttribute('data-audio-group-ref', 'memento-search');
+        searchInput.addEventListener('component-value-changed', (event) => {
+            this.searchQuery = event.detail.value.toString().toLowerCase();
+            this.filterMementos();
+        });
+        searchAndFilterContainer.appendChild(searchInput);
+        this.searchInput = searchInput;
+
+        // Create unlock filter checkbox container
+        const filterContainer = document.createElement('div');
+        filterContainer.classList.add('flex', 'items-center', 'ml-2'); // Added margin-left
+
+        // Create unlock filter checkbox with label
+        const unlockFilter = document.createElement('fxs-checkbox');
+        unlockFilter.classList.add('font-body-base');
+        unlockFilter.setAttribute('label', 'Show only unlocked');  // Changed from 'caption' to 'label'
+        unlockFilter.setAttribute('data-audio-group-ref', 'memento-filter');
+        unlockFilter.setAttribute('tabindex', '-1');
+        unlockFilter.addEventListener('component-value-changed', (event) => {
+            this.showOnlyUnlocked = event.detail.value;
+            this.filterMementos();
+        });
+
+        // Create label text element
+        const filterLabel = document.createElement('span');
+        filterLabel.classList.add('font-body-base', 'ml-2', 'text-white');
+        filterLabel.textContent = 'Show only unlocked';
+
+        // Add elements to container
+        filterContainer.appendChild(unlockFilter);
+        filterContainer.appendChild(filterLabel);
+        searchAndFilterContainer.appendChild(filterContainer);
+
+        this.outerSlot.appendChild(searchAndFilterContainer);
+
+        // Create mementoSlotsContainer first
         const mementoSlotsContainer = document.createElement("fxs-hslot");
         mementoSlotsContainer.classList.add("flex", "flex-row", "items-start");
+        
+        // Insert container after header but before memento slots
+        this.outerSlot.insertBefore(searchAndFilterContainer, mementoSlotsContainer);
+
         this.outerSlot.appendChild(mementoSlotsContainer);
         const leftNav = document.createElement("fxs-nav-help");
         leftNav.classList.add("self-center");
         leftNav.setAttribute("action-key", "inline-cycle-prev");
+        leftNav.textContent = "<"; // Use text instead of icon
         mementoSlotsContainer.appendChild(leftNav);
         for (const mementoSlotData of getMementoData()) {
             const mementoSlot = document.createElement("memento-slot");
@@ -118,6 +174,7 @@ export class MementoEditor extends Panel {
         const rightNav = document.createElement("fxs-nav-help");
         rightNav.setAttribute("action-key", "inline-cycle-next");
         rightNav.classList.add("self-center");
+        rightNav.textContent = ">"; // Use text instead of icon
         mementoSlotsContainer.appendChild(rightNav);
         const dividerFiligree = document.createElement("div");
         dividerFiligree.classList.add("memento-shell-line-divider", "h-2", "my-4");
@@ -161,6 +218,7 @@ export class MementoEditor extends Panel {
         this.enableCloseSound = true;
         this.Root.setAttribute("data-audio-group-ref", "memento-editor");
     }
+
     onAttach() {
         super.onAttach();
         this.Root.addEventListener('navigate-input', this.navigateInputListener);
@@ -200,8 +258,20 @@ export class MementoEditor extends Panel {
         });
     }
     sortMementos() {
-        // Sort by display type (Unlocked > Locked > Hidden)
-        this.mementosData.sort((a, b) => b.displayType - a.displayType);
+        // Debug: Log first memento to see available properties
+        if (this.mementosData.length > 0) {
+            console.log("Memento data structure:", this.mementosData[0]);
+        }
+
+        // Current sort by display type
+        this.mementosData.sort((a, b) => {
+            // First sort by display type (Unlocked > Locked > Hidden)
+            const displayTypeSort = a.displayType - b.displayType;
+            if (displayTypeSort !== 0) return displayTypeSort;
+
+            // Then by name for equal display types
+            return (a.mementoName || '').localeCompare(b.mementoName || '');
+        });
     }
     applySelections() {
         for (const slot of this.mementoSlotEles) {
@@ -265,6 +335,7 @@ export class MementoEditor extends Panel {
     filterMementos() {
         const activeSlotData = this.activeSlot?.maybeComponent?.slotData;
         const availableMementos = new Set();
+        
         if (activeSlotData) {
             for (const memento of activeSlotData.availableMementos) {
                 if (memento.value) {
@@ -272,12 +343,34 @@ export class MementoEditor extends Panel {
                 }
             }
         }
+
         for (const memento of this.mementoEles) {
             const mementoComponent = memento.maybeComponent;
             const memData = mementoComponent?.mementoData;
             const isHidden = memData?.displayType == DisplayType.DISPLAY_HIDDEN;
-            mementoComponent?.setHidden(isHidden);
-            mementoComponent?.setAvailable(memData?.displayType == DisplayType.DISPLAY_UNLOCKED && availableMementos.has(memData?.mementoTypeId ?? ""));
+            const isLocked = memData?.displayType == DisplayType.DISPLAY_LOCKED;
+
+            // Search filtering
+            let matchesSearch = true;
+            if (this.searchQuery) {
+                const searchableContent = [
+                    Locale.stylize(memData?.mementoName || ''),
+                    Locale.compose(memData?.functionalTextDesc || ''),
+                    Locale.stylize(memData?.flavorTextDesc || ''),
+                    Locale.stylize(memData?.unlockReason || '')
+                ].join(' ').toLowerCase();
+                
+                matchesSearch = searchableContent.includes(this.searchQuery);
+            }
+
+            // Add unlock filter check
+            const matchesUnlockFilter = !this.showOnlyUnlocked || !isLocked;
+
+            mementoComponent?.setHidden(isHidden || !matchesSearch || !matchesUnlockFilter);
+            mementoComponent?.setAvailable(
+                memData?.displayType == DisplayType.DISPLAY_UNLOCKED && 
+                availableMementos.has(memData?.mementoTypeId ?? "")
+            );
         }
     }
     confirmSelections() {
