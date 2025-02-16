@@ -81,7 +81,7 @@ export class MementoEditor extends Panel {
     constructor(root) {
         super(root);
         
-        // Add CSS style for highlighted memento
+// Add CSS style for highlighted memento
         const style = document.createElement('style');
         style.textContent = `
             .img-circle-right-clicked {
@@ -90,7 +90,7 @@ export class MementoEditor extends Panel {
             }
         `;
         document.head.appendChild(style);
-        
+                
         // Store reference to unlockFilter component
         this.unlockFilter = null;
         
@@ -252,17 +252,7 @@ export class MementoEditor extends Panel {
         this.enableCloseSound = true;
         this.Root.setAttribute("data-audio-group-ref", "memento-editor");
 
-        // Instead of using MouseGuard, attach the contextmenu listener to the Root element
-        this.Root.addEventListener('contextmenu', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            // Try different logging methods
-            Engine.Debug.trace("Right Click!"); // Method 1: Engine debug
-            UI.Debug.log("Right Click!");       // Method 2: UI debug
-            Debug.log("Right Click!");          // Method 3: Direct debug
-            Debugging.log("Right Click!");      // Method 4: Debugging utility
-        });
+        
         
         // Add property to track last highlighted memento
         this.lastHighlightedMemento = null;
@@ -274,7 +264,7 @@ export class MementoEditor extends Panel {
         this.loadHighlightedMementos();
     }
 
-    // Add new method to load highlighted mementos
+// Add new method to load highlighted mementos
     loadHighlightedMementos() {
         try {
             const highlightedMementos = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '[]');
@@ -290,9 +280,10 @@ export class MementoEditor extends Panel {
         } catch (e) {
             console.error('Failed to load highlighted mementos:', e);
         }
-    }
+    }// Add new method to save highlighted mementos
 
-    // Add new method to save highlighted mementos
+
+// Add new method to save highlighted mementos
     saveHighlightedMementos() {
         try {
             const highlightedMementos = this.mementoEles
@@ -308,11 +299,6 @@ export class MementoEditor extends Panel {
 
     onAttach() {
         super.onAttach();
-        
-        // Add engine event listener when panel attaches
-        engine.on('RightClick', (message) => {
-            engine.trigger('Error', message); // Use engine.trigger('Error') to log to the game's console
-        });
         
         this.Root.addEventListener('navigate-input', this.navigateInputListener);
         this.Root.addEventListener("engine-input", this.engineInputListener);
