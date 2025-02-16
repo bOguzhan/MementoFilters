@@ -80,6 +80,27 @@ Controls.define('memento-item', {
 export class MementoEditor extends Panel {
     constructor(root) {
         super(root);
+        
+        // Add CSS style for highlighted memento
+        const style = document.createElement('style');
+        style.textContent = `
+            .img-circle-right-clicked {
+                border: 2px solid #ff6b00 !important;
+                box-shadow: 0 0 10px #ff6b00 !important;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Store reference to unlockFilter component
+        this.unlockFilter = null;
+        
+        // Use the game's input system instead of DOM events
+        this.engineInputListener = this.onEngineInput.bind(this);
+
+        // Remove direct DOM event listeners
+        // Add engineInput handling instead
+        this.engineInputListener = this.onEngineInput.bind(this);
+        
         // Add new property for unlock filter
         this.showOnlyUnlocked = false;
         this.searchQuery = '';
@@ -170,6 +191,7 @@ export class MementoEditor extends Panel {
             this.showOnlyUnlocked = event.detail.value;
             this.filterMementos();
         });
+        this.unlockFilter = unlockFilter; // Store reference
 
         // Create label text element
         const filterLabel = document.createElement('span');
@@ -229,10 +251,69 @@ export class MementoEditor extends Panel {
         this.enableOpenSound = true;
         this.enableCloseSound = true;
         this.Root.setAttribute("data-audio-group-ref", "memento-editor");
+
+        // Instead of using MouseGuard, attach the contextmenu listener to the Root element
+        this.Root.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // Try different logging methods
+            Engine.Debug.trace("Right Click!"); // Method 1: Engine debug
+            UI.Debug.log("Right Click!");       // Method 2: UI debug
+            Debug.log("Right Click!");          // Method 3: Direct debug
+            Debugging.log("Right Click!");      // Method 4: Debugging utility
+        });
+        
+        // Add property to track last highlighted memento
+        this.lastHighlightedMemento = null;
+
+        // Add property for localStorage key
+        this.STORAGE_KEY = 'memento-highlights';
+
+        // Add method to load highlighted state
+        this.loadHighlightedMementos();
+    }
+
+    // Add new method to load highlighted mementos
+    loadHighlightedMementos() {
+        try {
+            const highlightedMementos = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '[]');
+            // After mementos are created, apply highlights
+            waitForLayout(() => {
+                this.mementoEles.forEach(memento => {
+                    const mementoId = memento.component?.mementoData?.mementoTypeId;
+                    if (mementoId && highlightedMementos.includes(mementoId)) {
+                        memento.classList.add('img-circle-right-clicked');
+                    }
+                });
+            });
+        } catch (e) {
+            console.error('Failed to load highlighted mementos:', e);
+        }
+    }
+
+    // Add new method to save highlighted mementos
+    saveHighlightedMementos() {
+        try {
+            const highlightedMementos = this.mementoEles
+                .filter(memento => memento.classList.contains('img-circle-right-clicked'))
+                .map(memento => memento.component?.mementoData?.mementoTypeId)
+                .filter(id => id); // Remove any undefined/null values
+            
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(highlightedMementos));
+        } catch (e) {
+            console.error('Failed to save highlighted mementos:', e);
+        }
     }
 
     onAttach() {
         super.onAttach();
+        
+        // Add engine event listener when panel attaches
+        engine.on('RightClick', (message) => {
+            engine.trigger('Error', message); // Use engine.trigger('Error') to log to the game's console
+        });
+        
         this.Root.addEventListener('navigate-input', this.navigateInputListener);
         this.Root.addEventListener("engine-input", this.engineInputListener);
         const leaderName = CreateGameModel.selectedLeader?.name ?? "";
@@ -322,6 +403,13 @@ export class MementoEditor extends Panel {
         this.filterMementos();
     }
     handleMementoSelected(memento) {
+        // Add highlight to clicked memento
+        if (this.lastHighlightedMemento) {
+            this.lastHighlightedMemento.classList.remove('img-circle-right-clicked');
+        }
+        memento.classList.add('img-circle-right-clicked');
+        this.lastHighlightedMemento = memento;
+
         if (memento.component.selected) {
             memento.component.selected = false;
             const mementoSlot = this.mementoSlotEles.find(s => s.component.slotData?.currentMemento.value == memento.component.mementoData?.mementoTypeId);
@@ -416,6 +504,7 @@ export class MementoEditor extends Panel {
         if (event.detail.status != InputActionStatuses.FINISH) {
             return;
         }
+
         switch (event.detail.name) {
             case 'cancel':
             case 'keyboard-escape':
@@ -425,6 +514,26 @@ export class MementoEditor extends Panel {
                 break;
             case 'shell-action-1':
                 this.confirmSelections();
+                event.preventDefault();
+                event.stopPropagation();
+                break;
+            case 'mousebutton-right':
+                // Find the memento-item under cursor using mouse position
+                const x = event.detail.x;
+                const y = event.detail.y;
+                const elementUnderCursor = document.elementFromPoint(x, y);
+                const target = elementUnderCursor?.closest('memento-item');
+                
+                if (target) {
+                    // Toggle highlight state
+                    if (target.classList.contains('img-circle-right-clicked')) {
+                        target.classList.remove('img-circle-right-clicked');
+                    } else {
+                        target.classList.add('img-circle-right-clicked');
+                    }
+                    this.lastHighlightedMemento = target;
+                    this.saveHighlightedMementos(); // Save state after toggling highlight
+                }
                 event.preventDefault();
                 event.stopPropagation();
                 break;
