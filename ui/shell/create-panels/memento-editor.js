@@ -220,19 +220,48 @@ export class MementoEditor extends Panel {
         const middleDecor = document.createElement("div");
         middleDecor.classList.add("absolute", "-top-1\\.5", "img-popup-middle-decor");
         innerFrame.appendChild(middleDecor);
-        const scrollbar = document.createElement("fxs-scrollable");
-        scrollbar.classList.add("ml-6", "mr-4", "absolute", "inset-0");
-        innerFrame.appendChild(scrollbar);
-        const mementosContainer = document.createElement("fxs-spatial-slot");
-        mementosContainer.classList.add("flex", "flex-row", "flex-wrap");
-        scrollbar.appendChild(mementosContainer);
+        
+        // Create container for dual lists
+        const listsContainer = document.createElement("div");
+        listsContainer.classList.add("flex", "flex-row", "w-full", "justify-between", "px-4");
+        
+        // Left list (4 items per row)
+        const leftList = document.createElement("fxs-scrollable");
+        leftList.classList.add("w-100");
+        const leftContainer = document.createElement("fxs-spatial-slot");
+        leftContainer.classList.add("flex", "flex-row", "flex-wrap","mt-2");
+        leftContainer.style.width = '400px'; // Force 4 items per row (80px * 4)
+        leftList.appendChild(leftContainer);
+        listsContainer.appendChild(leftList);
+
+        // Store left container reference
+        this.leftContainer = leftContainer;
+
+        // Create and append right list
+        const rightList = document.createElement("fxs-scrollable");
+        rightList.classList.add("w-43");
+        const rightContainer = document.createElement("fxs-spatial-slot");
+        rightContainer.classList.add("flex", "flex-col", "highlighted-mementos");
+        rightContainer.style.width = '100%';
+        
+        // Store right container reference
+        this.rightListContainer = rightContainer;
+        
+        rightList.appendChild(rightContainer);
+        listsContainer.appendChild(rightList);
+
+        // Only populate left list initially
         for (const mementoData of this.mementosData) {
-            const memento = document.createElement("memento-item");
-            memento.componentCreatedEvent.on((component) => component.mementoData = mementoData);
-            memento.addEventListener("action-activate", this.handleMementoSelected.bind(this, memento));
-            this.mementoEles.push(memento);
-            mementosContainer.appendChild(memento);
+            const leftMemento = document.createElement("memento-item");
+            leftMemento.componentCreatedEvent.on((component) => component.mementoData = mementoData);
+            leftMemento.addEventListener("action-activate", this.handleMementoSelected.bind(this, leftMemento));
+            this.mementoEles.push(leftMemento);
+            leftContainer.appendChild(leftMemento);
         }
+
+        // Replace the inner frame content with our dual lists
+        innerFrame.appendChild(listsContainer);
+
         const bottomControls = document.createElement("div");
         bottomControls.classList.add("flex", "flex-row", "mt-6");
         this.outerSlot.appendChild(bottomControls);
@@ -295,6 +324,64 @@ export class MementoEditor extends Panel {
         } catch (e) {
             console.error('Failed to save highlighted mementos:', e);
         }
+    }
+
+    createRightListItem(mementoData) {
+        const itemContainer = document.createElement("div");
+        itemContainer.classList.add("flex", "flex-row", "mb-4", "w-full", "gap-2","mr-10","mt-2", "ml-2");
+        
+        // Icon container
+        const iconContainer = document.createElement("div");
+        iconContainer.style.width = "80px";
+        iconContainer.style.flexShrink = "0";
+        iconContainer.classList.add("flex-none");
+        
+        const memento = document.createElement("memento-item");
+        memento.componentCreatedEvent.on((component) => {
+            component.mementoData = mementoData;
+            
+            // Set availability based on memento state
+            const isLocked = mementoData.displayType == DisplayType.DISPLAY_LOCKED;
+            component.setAvailable(!isLocked);
+            
+            if (mementoData) {
+                const name = Locale.stylize(mementoData.mementoName);
+                const desc = Locale.compose(mementoData.functionalTextDesc);
+
+                // Create separate divs for title and description
+                const titleDiv = document.createElement('div');
+                titleDiv.classList.add('font-title-lg', 'mb-1', 'text-left');
+                titleDiv.textContent = name;
+
+                const descDiv = document.createElement('div');
+                descDiv.classList.add('font-body-base', 'text-left');
+                
+                // Create a tooltip content element that uses the game's tooltip system
+                const formattedDesc = `[n]${desc}[/n]`;
+                descDiv.innerHTML = Locale.stylize(formattedDesc);
+
+                // Clear and append both elements
+                descriptionText.innerHTML = '';
+                descriptionText.appendChild(titleDiv);
+                descriptionText.appendChild(descDiv);
+            }
+        });
+        
+        // Description container
+        const descriptionContainer = document.createElement("div");
+        descriptionContainer.style.width = "8rem";
+        descriptionContainer.classList.add("pl-2", "mt-2");
+        
+        const descriptionText = document.createElement("div");
+        descriptionText.classList.add("text-white");
+        descriptionContainer.appendChild(descriptionText);
+        
+        iconContainer.appendChild(memento);
+        itemContainer.appendChild(iconContainer);
+        itemContainer.appendChild(descriptionContainer);
+        
+        this.mementoEles.push(memento);
+        return itemContainer;
     }
 
     onAttach() {
@@ -389,12 +476,22 @@ export class MementoEditor extends Panel {
         this.filterMementos();
     }
     handleMementoSelected(memento) {
-        // Add highlight to clicked memento
-        if (this.lastHighlightedMemento) {
-            this.lastHighlightedMemento.classList.remove('img-circle-right-clicked');
-        }
-        memento.classList.add('img-circle-right-clicked');
+        const wasHighlighted = memento.classList.contains('img-circle-right-clicked');
+        const mementoId = memento.component?.mementoData?.mementoTypeId;
+
+        // Toggle highlight on clicked item
+        memento.classList.toggle('img-circle-right-clicked');
+
+        // Update corresponding items
+        this.mementoEles.forEach(other => {
+            if (other !== memento && other.component?.mementoData?.mementoTypeId === mementoId) {
+                other.classList.toggle('img-circle-right-clicked', !wasHighlighted);
+            }
+        });
+
         this.lastHighlightedMemento = memento;
+        this.saveHighlightedMementos();
+        this.filterMementos(); // Rebuild right list
 
         if (memento.component.selected) {
             memento.component.selected = false;
@@ -430,13 +527,60 @@ export class MementoEditor extends Panel {
             }
         }
 
+        // Clear right list first
+        while (this.rightListContainer.firstChild) {
+            this.rightListContainer.removeChild(this.rightListContainer.firstChild);
+        }
+
+        // Get list of highlighted mementos that pass filters
+        const highlightedMementos = this.mementoEles
+            .filter(memento => {
+                // Check if memento is in left list and highlighted
+                if (memento.parentElement !== this.leftContainer || 
+                    !memento.classList.contains('img-circle-right-clicked')) {
+                    return false;
+                }
+
+                const memData = memento.component?.mementoData;
+                if (!memData) return false;
+
+                // Apply unlock filter
+                if (this.showOnlyUnlocked && memData.displayType === DisplayType.DISPLAY_LOCKED) {
+                    return false;
+                }
+
+                // Apply search filter
+                if (this.searchQuery) {
+                    const searchableContent = [
+                        Locale.stylize(memData.mementoName || ''),
+                        Locale.compose(memData.functionalTextDesc || ''),
+                        Locale.stylize(memData.flavorTextDesc || ''),
+                        Locale.stylize(memData.unlockReason || '')
+                    ].join(' ').toLowerCase();
+                    
+                    return searchableContent.includes(this.searchQuery);
+                }
+
+                return true;
+            })
+            .map(memento => memento.component?.mementoData)
+            .filter(data => data);
+
+        // Add filtered highlighted items to right list
+        highlightedMementos.forEach(mementoData => {
+            const rightListItem = this.createRightListItem(mementoData);
+            this.rightListContainer.appendChild(rightListItem);
+        });
+
+        // Filter left list items
         for (const memento of this.mementoEles) {
+            if (!memento.isConnected || memento.parentElement !== this.leftContainer) continue;
+
             const mementoComponent = memento.maybeComponent;
             const memData = mementoComponent?.mementoData;
             const isHidden = memData?.displayType == DisplayType.DISPLAY_HIDDEN;
             const isLocked = memData?.displayType == DisplayType.DISPLAY_LOCKED;
 
-            // Search filtering
             let matchesSearch = true;
             if (this.searchQuery) {
                 const searchableContent = [
@@ -449,9 +593,7 @@ export class MementoEditor extends Panel {
                 matchesSearch = searchableContent.includes(this.searchQuery);
             }
 
-            // Add unlock filter check
             const matchesUnlockFilter = !this.showOnlyUnlocked || !isLocked;
-
             mementoComponent?.setHidden(isHidden || !matchesSearch || !matchesUnlockFilter);
             mementoComponent?.setAvailable(
                 memData?.displayType == DisplayType.DISPLAY_UNLOCKED && 
@@ -487,9 +629,7 @@ export class MementoEditor extends Panel {
         }
     }
     onEngineInput(event) {
-        if (event.detail.status != InputActionStatuses.FINISH) {
-            return;
-        }
+        if (event.detail.status != InputActionStatuses.FINISH) return;
 
         switch (event.detail.name) {
             case 'cancel':
@@ -504,21 +644,28 @@ export class MementoEditor extends Panel {
                 event.stopPropagation();
                 break;
             case 'mousebutton-right':
-                // Find the memento-item under cursor using mouse position
-                const x = event.detail.x;
-                const y = event.detail.y;
-                const elementUnderCursor = document.elementFromPoint(x, y);
-                const target = elementUnderCursor?.closest('memento-item');
+                const target = document.elementFromPoint(event.detail.x, event.detail.y)?.closest('memento-item');
                 
                 if (target) {
+                    const wasHighlighted = target.classList.contains('img-circle-right-clicked');
+                    
                     // Toggle highlight state
-                    if (target.classList.contains('img-circle-right-clicked')) {
-                        target.classList.remove('img-circle-right-clicked');
-                    } else {
-                        target.classList.add('img-circle-right-clicked');
-                    }
+                    target.classList.toggle('img-circle-right-clicked');
+                    
+                    // Find and update corresponding item in the other list
+                    const targetId = target.component?.mementoData?.mementoTypeId;
+                    const isInRightList = target.parentElement.classList.contains('highlighted-mementos');
+                    
+                    this.mementoEles.forEach(memento => {
+                        const mementoId = memento.component?.mementoData?.mementoTypeId;
+                        if (mementoId === targetId && memento !== target) {
+                            memento.classList.toggle('img-circle-right-clicked', !wasHighlighted);
+                        }
+                    });
+
                     this.lastHighlightedMemento = target;
-                    this.saveHighlightedMementos(); // Save state after toggling highlight
+                    this.saveHighlightedMementos();
+                    this.filterMementos(); // This will update visibility in both lists
                 }
                 event.preventDefault();
                 event.stopPropagation();
