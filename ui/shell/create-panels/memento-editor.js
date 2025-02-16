@@ -61,11 +61,14 @@ export class Memento extends FxsActivatable {
             const desc = Locale.compose(this._mementoData.functionalTextDesc);
             const flavor = Locale.stylize(this._mementoData.flavorTextDesc);
             const unlock = Locale.stylize(this._mementoData.unlockReason);
+            const rightClickText = Locale.stylize("Right click to add to favorites");
+            const rightClickStyle = `[style:font-body-3xs opacity-75]${rightClickText}[/style]`;
+            
             if (this._mementoData.displayType == DisplayType.DISPLAY_LOCKED) {
-                this.Root.setAttribute("data-tooltip-content", `[n][style:font-title-lg]${name}[/style][n][style:font-body-base]${desc}[/style][n][style:font-body-sm]${flavor}[/style][n][style:font-body-sm]${unlock}[/style]`);
+                this.Root.setAttribute("data-tooltip-content", `[n][style:font-title-lg]${name}[/style][n][style:font-body-base]${desc}[/style][n][style:font-body-sm]${flavor}[/style][n][style:font-body-sm]${unlock}[/style][n][n]${rightClickStyle}`);
             }
             else if (this._mementoData.displayType == DisplayType.DISPLAY_UNLOCKED) {
-                this.Root.setAttribute("data-tooltip-content", `[n][style:font-title-lg]${name}[/style][n][style:font-body-base]${desc}[/style][n][style:font-body-sm]${flavor}[/style]`);
+                this.Root.setAttribute("data-tooltip-content", `[n][style:font-title-lg]${name}[/style][n][style:font-body-base]${desc}[/style][n][style:font-body-sm]${flavor}[/style][n][n]${rightClickStyle}`);
             }
             // Display hidden
             else { }
