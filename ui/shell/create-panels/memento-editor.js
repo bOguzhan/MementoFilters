@@ -337,6 +337,9 @@ export class MementoEditor extends Panel {
         iconContainer.classList.add("flex-none");
         
         const memento = document.createElement("memento-item");
+        // Add action-activate event listener to right list items too
+        memento.addEventListener("action-activate", this.handleMementoSelected.bind(this, memento));
+        
         memento.componentCreatedEvent.on((component) => {
             component.mementoData = mementoData;
             
@@ -476,32 +479,16 @@ export class MementoEditor extends Panel {
         this.filterMementos();
     }
     handleMementoSelected(memento) {
-        const wasHighlighted = memento.classList.contains('img-circle-right-clicked');
-        const mementoId = memento.component?.mementoData?.mementoTypeId;
-
-        // Toggle highlight on clicked item
-        memento.classList.toggle('img-circle-right-clicked');
-
-        // Update corresponding items
-        this.mementoEles.forEach(other => {
-            if (other !== memento && other.component?.mementoData?.mementoTypeId === mementoId) {
-                other.classList.toggle('img-circle-right-clicked', !wasHighlighted);
-            }
-        });
-
-        this.lastHighlightedMemento = memento;
-        this.saveHighlightedMementos();
-        this.filterMementos(); // Rebuild right list
-
+        // Remove highlighting logic from left-click handler
         if (memento.component.selected) {
             memento.component.selected = false;
             const mementoSlot = this.mementoSlotEles.find(s => s.component.slotData?.currentMemento.value == memento.component.mementoData?.mementoTypeId);
             mementoSlot?.component.setActiveMemento("NONE");
-            // Continue selection if a different slot is selected
             if (mementoSlot?.component.selected) {
                 return;
             }
         }
+        
         const mementoData = memento.maybeComponent?.mementoData;
         const selectedSlot = this.activeSlot?.maybeComponent;
         if (mementoData && selectedSlot) {
@@ -512,7 +499,6 @@ export class MementoEditor extends Panel {
                 }
                 memento.component.selected = true;
             }
-            ;
         }
     }
     filterMementos() {
@@ -648,24 +634,21 @@ export class MementoEditor extends Panel {
                 
                 if (target) {
                     const wasHighlighted = target.classList.contains('img-circle-right-clicked');
-                    
-                    // Toggle highlight state
-                    target.classList.toggle('img-circle-right-clicked');
-                    
-                    // Find and update corresponding item in the other list
                     const targetId = target.component?.mementoData?.mementoTypeId;
-                    const isInRightList = target.parentElement.classList.contains('highlighted-mementos');
                     
-                    this.mementoEles.forEach(memento => {
-                        const mementoId = memento.component?.mementoData?.mementoTypeId;
-                        if (mementoId === targetId && memento !== target) {
-                            memento.classList.toggle('img-circle-right-clicked', !wasHighlighted);
-                        }
-                    });
+                    // Find corresponding item in left list
+                    const leftItem = this.mementoEles.find(memento => 
+                        memento.parentElement === this.leftContainer && 
+                        memento.component?.mementoData?.mementoTypeId === targetId
+                    );
 
-                    this.lastHighlightedMemento = target;
-                    this.saveHighlightedMementos();
-                    this.filterMementos(); // This will update visibility in both lists
+                    if (leftItem) {
+                        // Toggle state on left item (which will trigger filterMementos)
+                        leftItem.classList.toggle('img-circle-right-clicked');
+                        this.lastHighlightedMemento = leftItem;
+                        this.saveHighlightedMementos();
+                        this.filterMementos();
+                    }
                 }
                 event.preventDefault();
                 event.stopPropagation();
